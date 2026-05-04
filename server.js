@@ -53,6 +53,23 @@ const authenticateToken = (req, res, next) => {
 // Initialize Database
 initDb();
 
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const result = await db.query('SELECT NOW()');
+    res.json({ 
+      status: 'connected', 
+      time: result.rows[0].now,
+      database: 'PostgreSQL/Supabase' 
+    });
+  } catch (err) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: err.message,
+      hint: 'Pastikan DATABASE_URL sudah diset di Vercel'
+    });
+  }
+});
+
 // --- AUTH ROUTES ---
 
 app.post('/api/login', async (req, res) => {
