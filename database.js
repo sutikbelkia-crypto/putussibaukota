@@ -117,7 +117,44 @@ export const initDb = async () => {
       ON CONFLICT (username) DO NOTHING
     `, ['admin', hashedPassword]);
 
-    console.log('Database initialized successfully.');
+    // Default Content
+    const defaultContent = [
+      ['hero_title', 'Sistem Informasi Kelurahan Putussibau Kota'],
+      ['hero_subtitle', 'Pelayanan Cepat, Transparan, dan Profesional'],
+      ['stats_villages', '12'],
+      ['stats_population', '15.4k'],
+      ['stats_digital', '100%'],
+      ['stats_response', '24h'],
+      ['site_name', 'Kelurahan Putussibau Kota'],
+      ['footer_title', 'PUTUSSIBAU KOTA'],
+      ['footer_subtitle', 'Kelurahan Putussibau Kota'],
+      ['footer_copyright', '© 2026 Pemerintah Kelurahan Putussibau Kota. All Rights Reserved.']
+    ];
+
+    for (const [key, value] of defaultContent) {
+      await client.query(`
+        INSERT INTO content (key, value) 
+        VALUES ($1, $2) 
+        ON CONFLICT (key) DO NOTHING
+      `, [key, value]);
+    }
+
+    // Default Menu Items
+    const defaultMenu = [
+      ['Beranda', '/', 1],
+      ['Profil', '/profil', 2],
+      ['Layanan', '/layanan', 3]
+    ];
+
+    for (const [label, link, order] of defaultMenu) {
+      await client.query(`
+        INSERT INTO menu_items (label, link, "order") 
+        SELECT $1, $2, $3 
+        WHERE NOT EXISTS (SELECT 1 FROM menu_items WHERE label = $1)
+      `, [label, link, order]);
+    }
+
+    console.log('Database initialized and seeded successfully.');
   } catch (err) {
     console.error('Error initializing database:', err);
   } finally {
