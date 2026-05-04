@@ -70,7 +70,7 @@ export default function Navbar({ content }) {
             })}
             <div className="ml-4">
               <a href="#kontak" className="bg-blue-900 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-blue-800 transition-all shadow-xl shadow-blue-900/20 active:scale-95">
-                Hubungi Kami
+                Contact Person
               </a>
             </div>
           </div>
