@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import db from './database.js';
+import db, { initDb } from './database.js';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
@@ -50,13 +50,18 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Initialize Database
+initDb();
+
 // --- AUTH ROUTES ---
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
-  db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const result = await db.query("SELECT * FROM users WHERE username = $1", [username]);
+    const user = result.rows[0];
+
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
     const validPassword = bcrypt.compareSync(password, user.password);
@@ -64,77 +69,74 @@ app.post('/api/login', (req, res) => {
 
     const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '24h' });
     res.json({ token, username: user.username });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// --- GENERIC CRUD HELPER (for simple tables) ---
+// --- GENERIC CRUD HELPER ---
 const setupCrud = (tableName, path) => {
-  app.get(`/api/${path}`, (req, res) => {
-    // Add sorting by 'order' if it exists in the table, otherwise by id
+  app.get(`/api/${path}`, async (req, res) => {
     const orderBy = tableName === 'menu_items' || tableName === 'sub_menu' ? 'ORDER BY "order" ASC' : 'ORDER BY id DESC';
-    db.all(`SELECT * FROM "${tableName}" ${orderBy}`, [], (err, rows) => {
-      if (err) {
-        console.error(`Error fetching from ${tableName}:`, err);
-        return res.status(500).json({ error: err.message });
-      }
-      res.json(rows);
-    });
+    try {
+      const result = await db.query(`SELECT * FROM "${tableName}" ${orderBy}`);
+      res.json(result.rows);
+    } catch (err) {
+      console.error(`Error fetching from ${tableName}:`, err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  app.post(`/api/${path}`, authenticateToken, (req, res) => {
-    // Filter out 'id' if it accidentally exists in req.body
+  app.post(`/api/${path}`, authenticateToken, async (req, res) => {
     const { id, ...data } = req.body;
     const keys = Object.keys(data);
     const values = Object.values(data);
     
     if (keys.length === 0) return res.status(400).json({ message: 'No data provided' });
 
-    const placeholders = keys.map(() => '?').join(',');
+    const placeholders = keys.map((_, i) => `$${i + 1}`).join(',');
     const quotedKeys = keys.map(key => `"${key}"`).join(',');
     
-    db.run(
-      `INSERT INTO "${tableName}" (${quotedKeys}) VALUES (${placeholders})`,
-      values,
-      function(err) {
-        if (err) {
-          console.error(`Error inserting into ${tableName}:`, err);
-          return res.status(500).json({ error: err.message });
-        }
-        res.json({ id: this.lastID, message: 'Data created' });
-      }
-    );
+    try {
+      const result = await db.query(
+        `INSERT INTO "${tableName}" (${quotedKeys}) VALUES (${placeholders}) RETURNING id`,
+        values
+      );
+      res.json({ id: result.rows[0].id, message: 'Data created' });
+    } catch (err) {
+      console.error(`Error inserting into ${tableName}:`, err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  app.put(`/api/${path}/:id`, authenticateToken, (req, res) => {
-    // Filter out 'id' from req.body to avoid updating PK
+  app.put(`/api/${path}/:id`, authenticateToken, async (req, res) => {
     const { id, ...data } = req.body;
     const keys = Object.keys(data);
     const values = Object.values(data);
     
     if (keys.length === 0) return res.status(400).json({ message: 'No data provided' });
 
-    const setClause = keys.map(key => `"${key}" = ?`).join(',');
-    db.run(
-      `UPDATE "${tableName}" SET ${setClause} WHERE id = ?`,
-      [...values, req.params.id],
-      function(err) {
-        if (err) {
-          console.error(`Error updating ${tableName}:`, err);
-          return res.status(500).json({ error: err.message });
-        }
-        res.json({ message: 'Data updated' });
-      }
-    );
+    const setClause = keys.map((key, i) => `"${key}" = $${i + 1}`).join(',');
+    try {
+      await db.query(
+        `UPDATE "${tableName}" SET ${setClause} WHERE id = $${keys.length + 1}`,
+        [...values, req.params.id]
+      );
+      res.json({ message: 'Data updated' });
+    } catch (err) {
+      console.error(`Error updating ${tableName}:`, err);
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  app.delete(`/api/${path}/:id`, authenticateToken, (req, res) => {
-    db.run(`DELETE FROM "${tableName}" WHERE id = ?`, [req.params.id], function(err) {
-      if (err) {
-        console.error(`Error deleting from ${tableName}:`, err);
-        return res.status(500).json({ error: err.message });
-      }
+  app.delete(`/api/${path}/:id`, authenticateToken, async (req, res) => {
+    try {
+      await db.query(`DELETE FROM "${tableName}" WHERE id = $1`, [req.params.id]);
       res.json({ message: 'Data deleted' });
-    });
+    } catch (err) {
+      console.error(`Error deleting from ${tableName}:`, err);
+      res.status(500).json({ error: err.message });
+    }
   });
 };
 
@@ -147,35 +149,37 @@ app.post('/api/upload', authenticateToken, upload.single('image'), (req, res) =>
 
 // --- CONTENT ROUTES ---
 
-app.get('/api/content', (req, res) => {
-  db.all("SELECT * FROM content", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+app.get('/api/content', async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM content");
     const content = {};
-    rows.forEach(row => content[row.key] = row.value);
+    result.rows.forEach(row => content[row.key] = row.value);
     res.json(content);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-app.put('/api/content', authenticateToken, (req, res) => {
+app.put('/api/content', authenticateToken, async (req, res) => {
   const { content } = req.body;
+  const client = await db.connect();
   
-  db.serialize(() => {
-    db.run("BEGIN TRANSACTION");
-    const stmt = db.prepare("INSERT OR REPLACE INTO content (key, value) VALUES (?, ?)");
-    
-    Object.entries(content).forEach(([key, value]) => {
-      stmt.run(key, value || '');
-    });
-    
-    stmt.finalize();
-    db.run("COMMIT", (err) => {
-      if (err) {
-        db.run("ROLLBACK");
-        return res.status(500).json({ error: err.message });
-      }
-      res.json({ message: 'Content updated successfully' });
-    });
-  });
+  try {
+    await client.query("BEGIN");
+    for (const [key, value] of Object.entries(content)) {
+      await client.query(
+        "INSERT INTO content (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+        [key, value || '']
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ message: 'Content updated successfully' });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
 });
 
 // --- SETUP CRUD FOR NEW TABLES ---
@@ -192,45 +196,60 @@ setupCrud('related_links', 'related-links');
 setupCrud('opd_links', 'opd-links');
 
 // --- USERS MANAGEMENT ---
-app.get('/api/users', authenticateToken, (req, res) => {
-  db.all("SELECT id, username FROM users", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-app.post('/api/users', authenticateToken, (req, res) => {
-  const { username, password } = req.body;
-  const salt = bcrypt.genSaltSync(10);
-  const hashedPassword = bcrypt.hashSync(password, salt);
-  db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ id: this.lastID, message: 'User created' });
-  });
-});
-
-app.put('/api/users/:id', authenticateToken, (req, res) => {
-  const { username, password } = req.body;
-  if (password) {
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(password, salt);
-    db.run("UPDATE users SET username = ?, password = ? WHERE id = ?", [username, hashedPassword, req.params.id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'User updated with new password' });
-    });
-  } else {
-    db.run("UPDATE users SET username = ? WHERE id = ?", [username, req.params.id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ message: 'User updated' });
-    });
+app.get('/api/users', authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query("SELECT id, username FROM users");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.delete('/api/users/:id', authenticateToken, (req, res) => {
-  db.run("DELETE FROM users WHERE id = ?", [req.params.id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+app.post('/api/users', authenticateToken, async (req, res) => {
+  const { username, password } = req.body;
+  const salt = bcrypt.genSaltSync(10);
+  const hashedPassword = bcrypt.hashSync(password, salt);
+  try {
+    const result = await db.query(
+      "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id",
+      [username, hashedPassword]
+    );
+    res.json({ id: result.rows[0].id, message: 'User created' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    if (password) {
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync(password, salt);
+      await db.query(
+        "UPDATE users SET username = $1, password = $2 WHERE id = $3",
+        [username, hashedPassword, req.params.id]
+      );
+      res.json({ message: 'User updated with new password' });
+    } else {
+      await db.query(
+        "UPDATE users SET username = $1 WHERE id = $2",
+        [username, req.params.id]
+      );
+      res.json({ message: 'User updated' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    await db.query("DELETE FROM users WHERE id = $1", [req.params.id]);
     res.json({ message: 'User deleted' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 if (process.env.NODE_ENV !== 'production') {

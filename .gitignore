@@ -24,6 +24,5 @@ dist-ssr
 *.sw?
 
 # Database and Uploads
-*.sqlite
 uploads/
 .env
