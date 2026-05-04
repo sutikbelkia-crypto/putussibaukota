@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import db, { initDb } from './database.js';
 import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -29,11 +30,14 @@ if (!fs.existsSync(uploadDir)) {
 
 app.use('/uploads', express.static(uploadDir));
 
-// Multer storage config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
-});
+// Supabase Client Configuration
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+// Multer memory storage config (diperlukan untuk Vercel)
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Middleware to protect routes
@@ -168,11 +172,32 @@ const setupCrud = (tableName, path) => {
   });
 };
 
-// --- FILE UPLOAD ROUTE ---
-app.post('/api/upload', authenticateToken, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ imageUrl });
+// --- FILE UPLOAD ROUTE (SUPABASE STORAGE) ---
+app.post('/api/upload', authenticateToken, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+
+    const fileName = `${Date.now()}-${req.file.originalname.replace(/\s/g, '_')}`;
+    
+    const { data, error } = await supabase.storage
+      .from('images') // Pastikan bucket 'images' sudah dibuat di Supabase
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    // Ambil URL publik file tersebut
+    const { data: { publicUrl } } = supabase.storage
+      .from('images')
+      .getPublicUrl(fileName);
+
+    res.json({ imageUrl: publicUrl });
+  } catch (err) {
+    console.error('Upload error:', err.message);
+    res.status(500).json({ error: 'Gagal upload ke Supabase Storage', details: err.message });
+  }
 });
 
 // --- CONTENT ROUTES ---
