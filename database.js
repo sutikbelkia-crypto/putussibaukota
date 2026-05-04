@@ -12,8 +12,10 @@ const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({
   connectionString: connectionString,
   ssl: {
-    rejectUnauthorized: false // Diperlukan untuk koneksi ke Supabase/Heroku
-  }
+    rejectUnauthorized: false
+  },
+  connectionTimeoutMillis: 5000, // Max 5 detik untuk konek
+  query_timeout: 5000           // Max 5 detik untuk satu query
 });
 
 export const initDb = async () => {

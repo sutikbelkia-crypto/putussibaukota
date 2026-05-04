@@ -50,22 +50,26 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Initialize Database
-initDb();
-
+// --- HEALTH CHECK ROUTE ---
 app.get('/api/db-check', async (req, res) => {
+  console.log('Checking database connection...');
   try {
+    // Jalankan initDb saat cek jika diperlukan
+    await initDb();
+    
     const result = await db.query('SELECT NOW()');
+    console.log('Database connected successfully');
     res.json({ 
       status: 'connected', 
       time: result.rows[0].now,
       database: 'PostgreSQL/Supabase' 
     });
   } catch (err) {
+    console.error('Database connection error:', err.message);
     res.status(500).json({ 
       status: 'error', 
       message: err.message,
-      hint: 'Pastikan DATABASE_URL sudah diset di Vercel'
+      hint: 'Pastikan DATABASE_URL sudah diset dengan benar di Vercel'
     });
   }
 });
