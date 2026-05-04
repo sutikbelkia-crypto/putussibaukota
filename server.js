@@ -58,10 +58,17 @@ app.get('/api/db-check', async (req, res) => {
     await initDb();
     
     const result = await db.query('SELECT NOW()');
+    const contentCount = await db.query('SELECT COUNT(*) FROM content');
+    const menuCount = await db.query('SELECT COUNT(*) FROM menu_items');
+    
     console.log('Database connected successfully');
     res.json({ 
       status: 'connected', 
       time: result.rows[0].now,
+      data_stats: {
+        content: contentCount.rows[0].count,
+        menu_items: menuCount.rows[0].count
+      },
       database: 'PostgreSQL/Supabase' 
     });
   } catch (err) {
