@@ -128,7 +128,7 @@ export default function AdminDashboard() {
     const isExpanded = expandedMenus.includes(id);
 
     return (
-      <div className="mb-2">
+      <div className="mb-1">
         <button 
           onClick={() => {
             if (hasSubmenu) {
@@ -139,20 +139,20 @@ export default function AdminDashboard() {
               setActiveTab(id);
             }
           }}
-          className={`w-full flex items-center justify-between px-6 py-4 rounded-2xl transition-all duration-300 group ${
+          className={`w-full flex items-center justify-between px-5 py-3 rounded-xl transition-all duration-300 group ${
             active 
               ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/40 translate-x-1' 
               : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
           }`}
         >
-          <div className="flex items-center space-x-4">
-            <div className={`p-2 rounded-xl transition-colors ${active ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
-              <Icon size={20} className={active ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'} />
+          <div className="flex items-center space-x-3">
+            <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
+              <Icon size={18} className={active ? 'text-white' : 'text-slate-400 group-hover:text-blue-400'} />
             </div>
-            <span className="font-bold text-sm tracking-wide">{label}</span>
+            <span className="font-bold text-xs tracking-wide">{label}</span>
           </div>
           {hasSubmenu && (
-            <ChevronRight size={18} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''} ${active ? 'text-white' : 'text-slate-600'}`} />
+            <ChevronRight size={16} className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''} ${active ? 'text-white' : 'text-slate-600'}`} />
           )}
         </button>
         
@@ -349,7 +349,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="p-8 md:p-10 flex-1 overflow-y-auto">
+        <div className="p-6 md:p-8 flex-1 overflow-y-auto">
           {renderContent(activeTab, { 
             content, setContent, 
             menu, setMenu,
@@ -744,7 +744,7 @@ function renderContent(tab, props) {
                                menubar: false,
                                plugins: ['advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview', 'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen', 'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'],
                                toolbar: 'undo redo | blocks | bold italic textcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-                               content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+                               content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px; line-height: 1.4; margin: 10px }',
                                promotion: false,
                                branding: false,
                                license_key: 'gpl'
@@ -2297,11 +2297,11 @@ const StatCard = ({ label, value, icon: Icon, color }) => {
 };
 
 const Card = ({ title, children }) => (
-  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-    <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50">
-       <h2 className="font-bold text-slate-900 uppercase tracking-tighter">{title}</h2>
+  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+       <h2 className="font-bold text-slate-900 uppercase tracking-tighter text-sm">{title}</h2>
     </div>
-    <div className="p-8">
+    <div className="p-6">
       {children}
     </div>
   </div>
@@ -2309,10 +2309,10 @@ const Card = ({ title, children }) => (
 
 const Input = ({ label, value, onChange, type = "text" }) => (
   <div>
-    <label className="block text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest">{label}</label>
+    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-widest">{label}</label>
     <input 
       type={type}
-      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all font-medium"
+      className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-transparent focus:border-blue-500 focus:bg-white outline-none transition-all font-medium text-sm"
       value={value || ''}
       onChange={e => onChange(e.target.value)}
     />
