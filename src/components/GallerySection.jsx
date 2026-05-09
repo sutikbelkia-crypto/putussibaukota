@@ -36,11 +36,23 @@ export default function GallerySection() {
           fetch('/api/videos')
         ]);
         
-        if (photosRes.ok) setPhotos(await photosRes.json());
-        if (albumsRes.ok) setAlbums(await albumsRes.json());
-        if (videosRes.ok) setVideos(await videosRes.json());
+        if (photosRes.ok) {
+          const data = await photosRes.json();
+          setPhotos(Array.isArray(data) ? data : []);
+        }
+        if (albumsRes.ok) {
+          const data = await albumsRes.json();
+          setAlbums(Array.isArray(data) ? data : []);
+        }
+        if (videosRes.ok) {
+          const data = await videosRes.json();
+          setVideos(Array.isArray(data) ? data : []);
+        }
       } catch (err) {
         console.error('Failed to fetch gallery data:', err);
+        setPhotos([]);
+        setAlbums([]);
+        setVideos([]);
       }
     };
     fetchData();

@@ -15,9 +15,12 @@ function LandingPage() {
 
   useEffect(() => {
     fetch('/api/content')
-      .then(res => res.json())
-      .then(data => setContent(data))
-      .catch(err => console.error('Error fetching content:', err));
+      .then(res => res.ok ? res.json() : {})
+      .then(data => setContent(data && typeof data === 'object' && !Array.isArray(data) ? data : {}))
+      .catch(err => {
+        console.error('Error fetching content:', err);
+        setContent({});
+      });
   }, []);
 
   return (

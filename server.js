@@ -31,10 +31,15 @@ if (!fs.existsSync(uploadDir)) {
 app.use('/uploads', express.static(uploadDir));
 
 // Supabase Client Configuration
-const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+} else {
+  console.warn('WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing. Supabase Storage features will be disabled.');
+}
 
 // Multer memory storage config (diperlukan untuk Vercel)
 const storage = multer.memoryStorage();
@@ -175,6 +180,9 @@ const setupCrud = (tableName, path) => {
 // --- FILE UPLOAD ROUTE (SUPABASE STORAGE) ---
 app.post('/api/upload', authenticateToken, upload.single('image'), async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({ error: 'Supabase Storage is not configured' });
+    }
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
     const fileName = `${Date.now()}-${req.file.originalname.replace(/\s/g, '_')}`;

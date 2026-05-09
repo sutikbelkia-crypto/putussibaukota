@@ -9,12 +9,16 @@ export default function Navbar({ content }) {
   useEffect(() => {
     // Fetch menu and sub-menu
     Promise.all([
-      fetch('/api/menu').then(res => res.json()),
-      fetch('/api/submenu').then(res => res.json())
+      fetch('/api/menu').then(res => res.ok ? res.json() : []),
+      fetch('/api/submenu').then(res => res.ok ? res.json() : [])
     ]).then(([menuData, subMenuData]) => {
-      setMenu(menuData);
-      setSubMenu(subMenuData);
-    }).catch(err => console.error('Error fetching navigation:', err));
+      setMenu(Array.isArray(menuData) ? menuData : []);
+      setSubMenu(Array.isArray(subMenuData) ? subMenuData : []);
+    }).catch(err => {
+      console.error('Error fetching navigation:', err);
+      setMenu([]);
+      setSubMenu([]);
+    });
   }, []);
 
   return (

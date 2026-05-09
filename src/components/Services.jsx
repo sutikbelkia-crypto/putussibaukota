@@ -5,9 +5,12 @@ export default function Services() {
 
   useEffect(() => {
     fetch('/api/services')
-      .then(res => res.json())
-      .then(data => setServices(data))
-      .catch(err => console.error('Error fetching services:', err));
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setServices(Array.isArray(data) ? data : []))
+      .catch(err => {
+        console.error('Error fetching services:', err);
+        setServices([]);
+      });
   }, []);
 
   // Default icons/colors if none provided by backend

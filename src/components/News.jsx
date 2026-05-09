@@ -5,9 +5,12 @@ export default function News() {
 
   useEffect(() => {
     fetch('/api/articles')
-      .then(res => res.json())
-      .then(data => setArticles(data))
-      .catch(err => console.error('Error fetching articles:', err));
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setArticles(Array.isArray(data) ? data : []))
+      .catch(err => {
+        console.error('Error fetching articles:', err);
+        setArticles([]);
+      });
   }, []);
 
   return (

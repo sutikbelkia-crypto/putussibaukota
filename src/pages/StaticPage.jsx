@@ -12,27 +12,27 @@ export default function StaticPage() {
   const getImageUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    if (url.startsWith('uploads/')) return `http://localhost:5000/${url}`;
-    if (!url.startsWith('/')) return `http://localhost:5000/${url}`;
-    return `http://localhost:5000${url}`;
+    if (url.startsWith('/')) return url;
+    return `/${url}`;
   };
 
   const processContent = (htmlContent) => {
     if (!htmlContent) return '';
-    // Fix relative image paths inserted by TinyMCE without a leading slash
-    return htmlContent.replace(/src="uploads\//g, 'src="http://localhost:5000/uploads/');
+    // No need for localhost:5000 prefix in production
+    return htmlContent;
   };
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/static_pages`)
-      .then(res => res.json())
+    fetch(`/api/static_pages`)
+      .then(res => res.ok ? res.json() : [])
       .then(data => {
-        const found = data.find(p => p.slug === slug);
-        if (found) {
-          setPage(found);
-        } else {
-          // If not found, maybe redirect to home or show 404
-          console.error('Page not found');
+        if (Array.isArray(data)) {
+          const found = data.find(p => p.slug === slug);
+          if (found) {
+            setPage(found);
+          } else {
+            console.error('Page not found');
+          }
         }
         setLoading(false);
       })
