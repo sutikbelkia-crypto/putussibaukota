@@ -11,15 +11,32 @@ import StaticPage from './pages/StaticPage'
 import GallerySection from './components/GallerySection'
 
 function LandingPage() {
-  const [content, setContent] = useState({});
+  const [content, setContent] = useState({
+    stats_villages: '12',
+    stats_population: '15.4k',
+    stats_digital: '100%',
+    stats_response: '24h',
+    footer_title: 'PUTUSSIBAU KOTA',
+    footer_subtitle: 'Kelurahan Putussibau Kota',
+    footer_logo_text: 'PK',
+    footer_shortcut_1_label: 'Beranda',
+    footer_shortcut_1_link: '/',
+    footer_shortcut_2_label: 'Profil',
+    footer_shortcut_2_link: '/profil',
+    footer_shortcut_3_label: 'Layanan',
+    footer_shortcut_3_link: '/layanan'
+  });
 
   useEffect(() => {
     fetch('/api/content')
       .then(res => res.ok ? res.json() : {})
-      .then(data => setContent(data && typeof data === 'object' && !Array.isArray(data) ? data : {}))
+      .then(data => {
+        if (data && typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length > 0) {
+          setContent(prev => ({ ...prev, ...data }));
+        }
+      })
       .catch(err => {
         console.error('Error fetching content:', err);
-        setContent({});
       });
   }, []);
 

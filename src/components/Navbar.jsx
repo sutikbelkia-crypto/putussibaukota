@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 export default function Navbar({ content }) {
-  const [menu, setMenu] = useState([]);
+  const [menu, setMenu] = useState([
+    { id: 1, label: 'Beranda', link: '/', order: 1 },
+    { id: 2, label: 'Profil', link: '/profil', order: 2 },
+    { id: 3, label: 'Layanan', link: '/layanan', order: 3 }
+  ]);
   const [subMenu, setSubMenu] = useState([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -12,12 +16,14 @@ export default function Navbar({ content }) {
       fetch('/api/menu').then(res => res.ok ? res.json() : []),
       fetch('/api/submenu').then(res => res.ok ? res.json() : [])
     ]).then(([menuData, subMenuData]) => {
-      setMenu(Array.isArray(menuData) ? menuData : []);
-      setSubMenu(Array.isArray(subMenuData) ? subMenuData : []);
+      if (Array.isArray(menuData) && menuData.length > 0) {
+        setMenu(menuData);
+      }
+      if (Array.isArray(subMenuData)) {
+        setSubMenu(subMenuData);
+      }
     }).catch(err => {
       console.error('Error fetching navigation:', err);
-      setMenu([]);
-      setSubMenu([]);
     });
   }, []);
 
