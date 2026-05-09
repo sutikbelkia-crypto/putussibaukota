@@ -6,21 +6,38 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Gunakan DATABASE_URL dari environment variable (Supabase)
-// Jika tidak ada, gunakan default (untuk mencegah error saat build)
+// Jika tidak ada atau masih menggunakan placeholder 'xxx', kita tandai sebagai tidak terkoneksi
 const connectionString = process.env.DATABASE_URL;
+const isPlaceholder = !connectionString || connectionString.includes('xxx') || connectionString.includes('[ID]');
 
-const pool = new Pool({
+const pool = isPlaceholder ? null : new Pool({
   connectionString: connectionString,
   ssl: {
     rejectUnauthorized: false
   },
-  connectionTimeoutMillis: 5000, // Max 5 detik untuk konek
-  query_timeout: 5000           // Max 5 detik untuk satu query
+  connectionTimeoutMillis: 5000, 
+  query_timeout: 5000           
 });
 
+// Mock query function jika pool tidak tersedia
+const dbQuery = async (text, params) => {
+  if (!pool) {
+    console.warn('Database not connected (Demo Mode). Query skipped:', text);
+    return { rows: [] };
+  }
+  return pool.query(text, params);
+};
+
+const dbConnect = async () => {
+  if (!pool) return { release: () => {}, query: dbQuery };
+  return pool.connect();
+};
+
 export const initDb = async () => {
-  const client = await pool.connect();
+  if (!pool) return;
+  let client;
   try {
+    client = await pool.connect();
     console.log('Initializing PostgreSQL database...');
     
     // Users table
@@ -158,8 +175,10 @@ export const initDb = async () => {
   } catch (err) {
     console.error('Error initializing database:', err);
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };
 
-export default pool;
+export const query = dbQuery;
+export const connect = dbConnect;
+export default { query: dbQuery, connect: dbConnect, initDb };
