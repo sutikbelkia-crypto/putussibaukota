@@ -27,6 +27,10 @@ const pool = isPlaceholder ? null : new Pool({
 const dbQuery = async (text, params) => {
   if (!pool) {
     console.warn('Database not connected (Demo Mode). Query skipped:', text);
+    // Jika query bertipe INSERT dengan RETURNING id, berikan mock ID agar tidak memicu TypeError
+    if (text.toUpperCase().includes('INSERT') && text.toUpperCase().includes('RETURNING')) {
+      return { rows: [{ id: Math.floor(Math.random() * 1000) + 1 }] };
+    }
     return { rows: [] };
   }
   return pool.query(text, params);

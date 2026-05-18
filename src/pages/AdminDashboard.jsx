@@ -197,8 +197,14 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 relative">
       {message && (
         <div className="fixed top-20 right-8 z-[100] animate-in slide-in-from-right-8 duration-300">
-           <div className="bg-emerald-500 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-emerald-500/20 flex items-center space-x-3 font-bold">
-              <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">✓</div>
+           <div className={`text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 font-bold ${
+             message.toLowerCase().includes('gagal') || message.toLowerCase().includes('error') || message.toLowerCase().includes('expired')
+               ? 'bg-rose-500 shadow-rose-500/20'
+               : 'bg-emerald-500 shadow-emerald-500/20'
+           }`}>
+              <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center text-sm font-bold">
+                {message.toLowerCase().includes('gagal') || message.toLowerCase().includes('error') || message.toLowerCase().includes('expired') ? '✕' : '✓'}
+              </div>
               <span>{message}</span>
            </div>
         </div>
@@ -358,6 +364,7 @@ export default function AdminDashboard() {
             saving, setSaving, 
             message, setMessage, 
             fetchData,
+            navigate,
             showUserModal, setShowUserModal,
             showSubMenuModal, setShowSubMenuModal,
             showMainMenuModal, setShowMainMenuModal,
@@ -407,6 +414,7 @@ function renderContent(tab, props) {
     saving, setSaving, 
     setMessage, 
     fetchData,
+    navigate,
     showUserModal, setShowUserModal,
     showSubMenuModal, setShowSubMenuModal,
     showMainMenuModal, setShowMainMenuModal,
@@ -442,6 +450,17 @@ function renderContent(tab, props) {
     serviceForm, setServiceForm
   } = props;
 
+  const handleAuthError = (status) => {
+    if (status === 401 || status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      alert('Sesi Anda telah berakhir. Silakan login kembali.');
+      navigate('/login');
+      return true;
+    }
+    return false;
+  };
+
   const handleSaveContent = async () => {
     setSaving(true);
     try {
@@ -456,9 +475,16 @@ function renderContent(tab, props) {
       if (response.ok) {
         setMessage('Konten berhasil disimpan!');
         setTimeout(() => setMessage(''), 3000);
+      } else {
+        if (handleAuthError(response.status)) return;
+        const errData = await response.json().catch(() => ({}));
+        setMessage(`Gagal menyimpan konten: ${errData.error || response.statusText}`);
+        setTimeout(() => setMessage(''), 4000);
       }
     } catch (err) {
       console.error('Failed to save content');
+      setMessage('Gagal menghubungi server untuk menyimpan konten.');
+      setTimeout(() => setMessage(''), 4000);
     } finally {
       setSaving(false);
     }
@@ -1962,12 +1988,15 @@ function renderContent(tab, props) {
             setMessage('Album berhasil disimpan!'); 
             setTimeout(() => setMessage(''), 3000); 
           } else {
-            const errData = await res.json();
+            if (handleAuthError(res.status)) return;
+            const errData = await res.json().catch(() => ({}));
             setMessage(`Gagal simpan: ${errData.error || res.statusText}`);
+            setTimeout(() => setMessage(''), 4000);
           }
         } catch (err) { 
           console.error(err);
-          setMessage(`Error: ${err.message}`);
+          setMessage(`Gagal simpan: ${err.message}`);
+          setTimeout(() => setMessage(''), 4000);
         } finally { setSaving(false); }
       };
       return (
