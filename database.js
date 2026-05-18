@@ -10,8 +10,12 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL;
 const isPlaceholder = !connectionString || connectionString.includes('xxx') || connectionString.includes('[ID]');
 
+// Tentukan nama database target: db_websiteptskota
+const dbName = 'db_websiteptskota';
+
 const pool = isPlaceholder ? null : new Pool({
   connectionString: connectionString,
+  database: dbName, // Memastikan koneksi mengarah ke database 'db_websiteptskota' di Supabase
   ssl: {
     rejectUnauthorized: false
   },
