@@ -69,12 +69,30 @@ export default function AdminDashboard() {
   
   const navigate = useNavigate();
 
+  const parseJwt = (token) => {
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+      return null;
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
       return;
     }
+    
+    // Check if token has expired client-side
+    const decoded = parseJwt(token);
+    if (decoded && decoded.exp * 1000 < Date.now()) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      navigate('/login');
+      return;
+    }
+    
     fetchData();
   }, [navigate]);
 
@@ -454,8 +472,11 @@ function renderContent(tab, props) {
     if (status === 401 || status === 403) {
       localStorage.removeItem('token');
       localStorage.removeItem('username');
-      alert('Sesi Anda telah berakhir. Silakan login kembali.');
-      navigate('/login');
+      setMessage('Sesi Anda telah berakhir. Mengarahkan kembali ke halaman login...');
+      setTimeout(() => {
+        setMessage('');
+        navigate('/login');
+      }, 2500);
       return true;
     }
     return false;
@@ -975,11 +996,7 @@ function renderContent(tab, props) {
             setMessage(editingSubMenuId ? 'Sub Menu diperbarui!' : 'Sub Menu ditambahkan!');
             setTimeout(() => setMessage(''), 3000);
           } else {
-            if (response.status === 401 || response.status === 403) {
-              alert('Sesi Anda telah berakhir. Silakan login kembali.');
-              navigate('/login');
-              return;
-            }
+            if (handleAuthError(response.status)) return;
             let errorMessage = response.statusText;
             try {
               const errorData = await response.json();
@@ -1161,11 +1178,7 @@ function renderContent(tab, props) {
             setMessage(editingMainMenuId ? 'Menu Utama diperbarui!' : 'Menu Utama ditambahkan!');
             setTimeout(() => setMessage(''), 3000);
           } else {
-            if (response.status === 401 || response.status === 403) {
-              alert('Sesi Anda telah berakhir. Silakan login kembali.');
-              navigate('/login');
-              return;
-            }
+            if (handleAuthError(response.status)) return;
             let errorMessage = response.statusText;
             try {
               const errorData = await response.json();
